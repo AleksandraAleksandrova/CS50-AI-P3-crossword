@@ -99,7 +99,10 @@ class CrosswordCreator():
         (Remove any values that are inconsistent with a variable's unary
          constraints; in this case, the length of the word.)
         """
-        raise NotImplementedError
+        for v in self.crossword.variables:
+            for x in self.crossword.words:
+                if len(x) != v.length:
+                    self.domains[v].remove(x)
 
     def revise(self, x, y):
         """
@@ -109,8 +112,27 @@ class CrosswordCreator():
 
         Return True if a revision was made to the domain of `x`; return
         False if no revision was made.
+
+        function pseudo-code from notes:
+        revised = false
+        for x in X.domain:
+            if no y in Y.domain satisfies constraint for (X,Y):
+                delete x from X.domain
+                revised = true
+
+        return revised
         """
-        raise NotImplementedError
+        overlap = self.crossword.overlaps[x, y]
+        if overlap is None:
+            return False
+        
+        revised = False
+        i, j = overlap
+        for x_word in self.domains[x]:
+            if not any(x_word[i] == y_word[j] for y_word in self.domains[y]):
+                self.domains[x].remove(x_word)
+                revised = True
+        return revised
 
     def ac3(self, arcs=None):
         """
@@ -120,8 +142,33 @@ class CrosswordCreator():
 
         Return True if arc consistency is enforced and no domains are empty;
         return False if one or more domains end up empty.
+
+        function pseudo-code from notes:
+        queue = all arcs in csp
+        while queue non-empty:
+            (X, Y) = Dequeue(queue)
+            if Revise(csp, X, Y):
+                if size of X.domain == 0:
+                    return false
+                for each Z in X.neighbors - {Y}:
+                    Enqueue(queue, (Z,X))
         """
-        raise NotImplementedError
+        if arcs is not None:
+            queue = arcs
+        else:
+            for v in self.crossword.variables:
+                for n in self.crossword.neighbors(v):
+                    queue.append((v, n))
+            
+        while queue:
+            x, y = queue.pop()
+            if self.revise(x, y):
+                if len(self.domains[x]) == 0:
+                    return False
+                for z in self.crossword.neighbors(x) - {y}:
+                    queue.append((z, x))
+
+        return True
 
     def assignment_complete(self, assignment):
         """
