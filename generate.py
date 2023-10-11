@@ -140,8 +140,7 @@ class CrosswordCreator():
             queue = []
             for x_var in self.crossword.variables:
                 for y_var in self.crossword.neighbors(x_var):
-                    if x_var != y_var:
-                        queue.append((x_var, y_var))
+                    queue.append((x_var, y_var))
             
         while queue:
             x, y = queue.pop()
@@ -150,7 +149,6 @@ class CrosswordCreator():
                     return False
                 for neighbor in self.crossword.neighbors(x) - {y}:
                     queue.append((neighbor, x))
-
         return True
 
     def assignment_complete(self, assignment):
@@ -158,7 +156,7 @@ class CrosswordCreator():
         Return True if `assignment` is complete (i.e., assigns a value to each
         crossword variable); return False otherwise.
         """
-        for var in self.crossword.variables:
+        for var in self.crossword.variables or not assignment[var]:
             if var not in assignment:
                 return False
         return True
@@ -169,20 +167,23 @@ class CrosswordCreator():
         Return True if `assignment` is consistent (i.e., words fit in crossword
         puzzle without conflicting characters); return False otherwise.
         """
+        assigned_words = set()
         for var in self.crossword.variables:
             if var not in assignment:
                 continue
             if var.length != len(assignment[var]):
                 return False
-            for neighbor in self.crossword.neighbors(var):
-                if neighbor not in assignment:
-                    continue
-                if assignment[var] == assignment[neighbor]:
-                    return False
+            
+            for neighbor in self.crossword.neighbors(var):               
                 if neighbor in assignment:
                     i, j = self.crossword.overlaps[var, neighbor]
                     if assignment[var][i] != assignment[neighbor][j]:
                         return False
+
+            picked_word = assignment[var]
+            if picked_word in assigned_words:
+                return False
+            assigned_words.add(picked_word)
         return True
 
     def order_domain_values(self, var, assignment):
@@ -229,7 +230,7 @@ class CrosswordCreator():
 
         If no assignment is possible, return None.
         """
-        if self.assignment_complete(assignment) and self.consistent(assignment):
+        if self.assignment_complete(assignment):
             return assignment
         var = self.select_unassigned_variable(assignment)
         for var_word in self.order_domain_values(var, assignment):
